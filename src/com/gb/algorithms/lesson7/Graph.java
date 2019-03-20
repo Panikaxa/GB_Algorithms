@@ -1,16 +1,17 @@
 package com.gb.algorithms.lesson7;
 
 public class Graph {
-    //private final int MAX_VERTS = 32;
-    private Vertex[] vertexList;
-    private int[][] adjMatrix;
-    private int size;
-    private Stack stack;
-    private Queue queue;
+    private Vertex[] vertexList; // массив вершин
+    private int[][] adjMatrix; // матрица смежности вершин
+    private int size; // текущий размер массива вершин
+    private Stack stack; // Стэк для метода поиска в глубину
+    private Queue queue; // Очередь для метода поиска в ширину
+    private Stack pathStack; // Стэк для вывода кратчайшего пути
 
-    public Graph(int maxVertex){
+    public Graph(int maxVertex){ // maxVertex - максимальный размер графа
         stack = new Stack(maxVertex);
         queue = new Queue(maxVertex);
+        pathStack = new Stack(maxVertex);
         vertexList = new Vertex[maxVertex];
         adjMatrix = new int[maxVertex][maxVertex];
         size = 0;
@@ -21,20 +22,39 @@ public class Graph {
         }
     }
 
+    /**
+     * Метод добавляет вершину в массив вершин
+     * @param label - название вершины
+     */
     public void addVertex(char label){
         vertexList[size++] = new Vertex(label);
     }
 
+    /**
+     * Метод добавляет ребро между двумя вершинами
+     * @param start - начальная вершина
+     * @param end - конечная вершина
+     */
     public void addEdge (int start, int end){
         adjMatrix[start][end] = 1;
         adjMatrix[end][start] = 1;
     }
 
+    /**
+     * Метод выводит в консоль название вершины по индексу
+     * @param vertex - индекс вершины в массиве вершин
+     */
     public void displayVertex(int vertex){
         System.out.print(vertexList[vertex].label);
     }
 
-    public int getVertex(char vertex){
+    /**
+     * Метод возвращает индекс вершины в массиве по указаному названию.
+     * Если указанная вершина отсутствует в массиве возвращает -1
+     * @param vertex - название вершины
+     * @return
+     */
+    public int getIndexVertex(char vertex){
         for (int i = 0; i < size; i++) {
             if (vertexList[i].label == vertex){
                 return i;
@@ -43,6 +63,11 @@ public class Graph {
         return -1;
     }
 
+    /**
+     * Метод возвращает индекс смежной непосещенной вершины для указанной вершины
+     * @param vertex - вершина для поиска смежной ей вершины
+     * @return
+     */
     private int getAdjUnvisitedVertex(int vertex){
         for (int i = 0; i < size; i++) {
             if (adjMatrix[vertex][i] == 1 && !vertexList[i].wasVisited){
@@ -52,45 +77,30 @@ public class Graph {
         return -1;
     }
 
-    private int getAdjVisitedVertex(int vertex){
-        for (int i = 0; i < size; i++) {
-            if (adjMatrix[vertex][i] == 1 && vertexList[i].wasVisited){
-                return i;
-            }
-        }
-        return -1;
-    }
-
+    /**
+     * Метод для обхода графа в глубину (Depth First Search)
+     */
     public void dfs(){
         vertexList[0].wasVisited = true;
         displayVertex(0);
-        System.out.print("->");
         stack.push(0);
-        int p = 0;
         while (!stack.isEmpty()){
             int adjUnvisitedVertex = getAdjUnvisitedVertex(stack.peek());
             if (adjUnvisitedVertex == -1){
                 stack.pop();
-                p++;
             } else {
                 vertexList[adjUnvisitedVertex].wasVisited = true;
-                if (p != 0) {
-                    System.out.println();
-                    for (int i = 0; i < p; i++) {
-                        System.out.print("    ");
-                    }
-                    p = 0;
-                }
-                displayVertex(adjUnvisitedVertex);
                 System.out.print("->");
+                displayVertex(adjUnvisitedVertex);
                 stack.push(adjUnvisitedVertex);
             }
         }
-        for (int i = 0; i < size; i++) {
-            vertexList[i].wasVisited = false;
-        }
+        resetWasVisited();
     }
 
+    /**
+     * Метод для обхода графа в ширину (Breadth First Search)
+     */
     public void bfs(){
         vertexList[0].wasVisited = true;
         displayVertex(0);
@@ -100,52 +110,87 @@ public class Graph {
             int firstVertex = queue.remove();
             while ((adjUnvisitedVertex = getAdjUnvisitedVertex(firstVertex)) != -1){
                 vertexList[adjUnvisitedVertex].wasVisited = true;
+                System.out.print("->");
                 displayVertex(adjUnvisitedVertex);
                 queue.insert(adjUnvisitedVertex);
             }
         }
-        for (int i = 0; i < size; i++) {
-            vertexList[i].wasVisited = false;
-        }
+        resetWasVisited();
     }
 
-    public boolean bfs(char start, char end){
-        int first = getVertex(start);
-        int last = getVertex(end);
-        Stack stack = new Stack(size);
-        vertexList[first].wasVisited = true;
-        queue.insert(first);
-        int adjUnvisitedVertex;
+    /**
+     * Метод для поиска кратчайшего пути между двумя вершинами
+     * с помощью метода обхода графа в ширину (Breadth First Search)
+     * @param from - начальная вершина
+     * @param to - конечная вершина
+     */
+    public void bfs(char from, char to){
+        int start = getIndexVertex(from);
+        int goal = getIndexVertex(to);
+        if (start == -1 || goal == -1) {
+            System.out.println("Вершина не найдена");
+            return;
+        }
+        vertexList[start].wasVisited = true;
+        queue.insert(start);
         while (!queue.isEmpty()){
+            if (start == goal){
+                pathStack.push(start);
+                getPath(start);
+                break;
+            }
             int firstVertex = queue.remove();
-            stack.push(firstVertex);
+            int adjUnvisitedVertex;
             while ((adjUnvisitedVertex = getAdjUnvisitedVertex(firstVertex)) != -1){
                 vertexList[adjUnvisitedVertex].wasVisited = true;
                 queue.insert(adjUnvisitedVertex);
-                if (adjUnvisitedVertex == last){
-                    stack.push(last);
-                    displayVertex(last);
-                    while (!stack.isEmpty()){
-                        int adjVisitedVertex = getAdjVisitedVertex(stack.peek());
-                        if (adjUnvisitedVertex == -1){
-                            stack.pop();
-                        } else {
-                            vertexList[adjVisitedVertex].wasVisited = false;
-                            displayVertex(adjVisitedVertex);
-                            stack.push(adjVisitedVertex);
-                        }
-
-                    }
-                    return true;
+                vertexList[adjUnvisitedVertex].parent = firstVertex;
+                if (adjUnvisitedVertex == goal){
+                    start = adjUnvisitedVertex;
                 }
             }
         }
+        printPath(from, to);
 
+        resetWasVisited();
+    }
 
+    /**
+     * Метод записывает в стэк кратчайший путь,
+     * найденный с помощью метода Breadth First Search.
+     * @param vertex - найденная конечная вершина
+     */
+    private void getPath(int vertex){
+        int parentVertex = vertexList[vertex].parent;
+        if (parentVertex == -1) return;
+        pathStack.push(parentVertex);
+        getPath(parentVertex);
+    }
+
+    /**
+     * Метод выводит в консоль кратчайший путь,
+     * найденный с помощью метода Breadth First Search.
+     * @param from - начальная вершина
+     * @param to - конечная вершина
+     */
+    private void printPath(char from, char to){
+        if (pathStack.isEmpty()){
+            System.out.println("Путь от " + from + " до " + to + " не найден");
+        } else {
+            System.out.println("Кратчайший путь от " + from + " до " + to + ": ");
+            while (!pathStack.isEmpty()) {
+                displayVertex(pathStack.pop());
+                if (!pathStack.isEmpty()) System.out.print("-");
+            }
+        }
+    }
+
+    /**
+     * Метод возвращает значение false полю wasVisited для всех вершин графа
+     */
+    private void resetWasVisited(){
         for (int i = 0; i < size; i++) {
             vertexList[i].wasVisited = false;
         }
-        //while (!stack.isEmpty()) displayVertex(stack.pop());
-        return false;
     }
 }
